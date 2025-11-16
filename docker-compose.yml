@@ -1,0 +1,112 @@
+version: "3.8"
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: aed_mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-Dnmk@001}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-AED}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-Dnmk@001}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - aed-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: aed_redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - aed-network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: aed_backend
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    volumes:
+      - ./backend:/app
+      - ./data:/data
+    environment:
+      - DATABASE_URL=${DATABASE_URL:-mysql+pymysql://root:Dnmk@001@mysql:3306/AED}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
+      - SECRET_KEY=${SECRET_KEY:-dev_secret_key_change_in_production_minimum_32_characters}
+      - ACCESS_TOKEN_EXPIRE_MINUTES=${ACCESS_TOKEN_EXPIRE_MINUTES:-60}
+      - REFRESH_TOKEN_EXPIRE_DAYS=${REFRESH_TOKEN_EXPIRE_DAYS:-7}
+      - UPLOAD_DIR=${UPLOAD_DIR:-/data/uploads}
+      - OUTPUT_DIR=${OUTPUT_DIR:-/data/outputs}
+      - MAX_UPLOAD_SIZE_MB=${MAX_UPLOAD_SIZE_MB:-100}
+      - BACKEND_CORS_ORIGINS=${BACKEND_CORS_ORIGINS:-http://localhost:5173}
+    ports:
+      - "8000:8000"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - aed-network
+
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: aed_worker
+    command: celery -A app.tasks.celery_app.cel worker --loglevel=info
+    volumes:
+      - ./backend:/app
+      - ./data:/data
+    environment:
+      - DATABASE_URL=${DATABASE_URL:-mysql+pymysql://root:Dnmk@001@mysql:3306/AED}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
+      - SECRET_KEY=${SECRET_KEY:-dev_secret_key_change_in_production_minimum_32_characters}
+      - UPLOAD_DIR=${UPLOAD_DIR:-/data/uploads}
+      - OUTPUT_DIR=${OUTPUT_DIR:-/data/outputs}
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      backend:
+        condition: service_started
+    networks:
+      - aed-network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: aed_frontend
+    command: yarn dev --host
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - VITE_API_BASE_URL=http://localhost:8000
+    depends_on:
+      - backend
+    networks:
+      - aed-network
+
+volumes:
+  mysql-data:
+
+networks:
+  aed-network:
+    driver: bridge

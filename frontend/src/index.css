@@ -1,0 +1,96 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-50;
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+}
+
+@layer components {
+  .card {
+    @apply rounded-2xl bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 shadow-md dark:shadow-card;
+  }
+  
+  .btn {
+    @apply inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-medium transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-slate-900;
+  }
+  
+  .btn-primary {
+    @apply btn bg-brand-500 hover:bg-brand-600 text-white shadow-lg shadow-brand-500/20 focus:ring-brand-500;
+  }
+  
+  .btn-secondary {
+    @apply btn bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-700 focus:ring-slate-400 dark:focus:ring-slate-600;
+  }
+  
+  .btn-ghost {
+    @apply btn bg-transparent hover:bg-slate-100 dark:hover:bg-slate-800/50 text-slate-700 dark:text-slate-300;
+  }
+  
+  .input {
+    @apply w-full rounded-lg bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent;
+  }
+  
+  .label {
+    @apply block text-xs font-medium text-slate-600 dark:text-slate-400 uppercase tracking-wide mb-2;
+  }
+}
+
+/* Custom Scrollbar */
+.scrollbar-thin::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  @apply bg-slate-100 dark:bg-slate-800 rounded;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  @apply bg-slate-400 dark:bg-slate-600 rounded hover:bg-slate-500 dark:hover:bg-slate-500;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  @apply bg-slate-500 dark:bg-slate-500;
+}
+
+/* React Flow custom styles */
+.react-flow__node {
+  @apply cursor-pointer;
+}
+
+.react-flow__edge-path {
+  stroke: #6366f1 !important;
+  stroke-width: 2;
+}
+
+.react-flow__handle {
+  @apply w-3 h-3 !important;
+}
+
+.react-flow__controls {
+  @apply shadow-xl;
+}
+
+.react-flow__controls-button {
+  @apply bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200;
+}
+
+.react-flow__controls-button:hover {
+  @apply bg-slate-100 dark:bg-slate-700;
+}
+
+.react-flow__attribution {
+  @apply text-slate-500 dark:text-slate-600;
+}
+
+.react-flow__minimap {
+  @apply bg-white dark:bg-slate-900;
+}
+
+.react-flow__background {
+  @apply bg-slate-50 dark:bg-slate-950;
+}
