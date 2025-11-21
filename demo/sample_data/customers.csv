@@ -1,0 +1,11 @@
+customer_id,name,email,country,registration_date,age,premium_member
+1,John Smith,john.smith@email.com,USA,2024-01-15,35,true
+2,Emma Wilson,emma.w@email.com,UK,2024-02-20,28,true
+3,Carlos Rodriguez,carlos.r@email.com,Spain,2024-01-10,42,false
+4,Yuki Tanaka,yuki.t@email.com,Japan,2024-03-05,31,true
+5,Sophie Martin,sophie.m@email.com,France,2024-02-14,29,false
+6,Ahmed Hassan,ahmed.h@email.com,Egypt,2024-01-25,38,true
+7,Maria Garcia,maria.g@email.com,Mexico,2024-03-12,26,false
+8,Li Wei,li.wei@email.com,China,2024-02-08,44,true
+9,Anna Kowalski,anna.k@email.com,Poland,2024-01-30,33,false
+10,James Brown,james.b@email.com,Canada,2024-03-01,37,true

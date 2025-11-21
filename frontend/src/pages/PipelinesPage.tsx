@@ -6,12 +6,14 @@ import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { pipelineAPI, PipelineListItem } from '@/services/api';
 import { formatDistanceToNow } from 'date-fns';
+import { useToast } from '@/contexts/ToastContext';
 
 export default function PipelinesPage() {
   const [pipelines, setPipelines] = useState<PipelineListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [runningPipelines, setRunningPipelines] = useState<Set<number>>(new Set());
   const navigate = useNavigate();
+  const toast = useToast();
 
   useEffect(() => {
     loadPipelines();
@@ -38,12 +40,12 @@ export default function PipelinesPage() {
     try {
       setRunningPipelines(prev => new Set(prev).add(pipelineId));
       await pipelineAPI.run(pipelineId);
-      alert('Pipeline started successfully! Check the Runs page for status.');
+      toast.success('Pipeline started successfully! Check the Runs page for status.');
       
       // Reload pipelines to get updated status
       await loadPipelines();
     } catch (err: any) {
-      alert(err.response?.data?.detail || 'Failed to run pipeline');
+      toast.error(err.response?.data?.detail || 'Failed to run pipeline');
     } finally {
       setRunningPipelines(prev => {
         const next = new Set(prev);
@@ -56,16 +58,16 @@ export default function PipelinesPage() {
   const handleDeletePipeline = async (e: React.MouseEvent, pipelineId: number, pipelineName: string) => {
     e.stopPropagation(); // Prevent card click
     
-    if (!confirm(`Are you sure you want to delete "${pipelineName}"? This action cannot be undone.`)) {
+    if (!window.confirm(`Are you sure you want to delete "${pipelineName}"? This action cannot be undone.`)) {
       return;
     }
 
     try {
       await pipelineAPI.delete(pipelineId);
       setPipelines(prev => prev.filter(p => p.id !== pipelineId));
-      alert('Pipeline deleted successfully!');
+      toast.success('Pipeline deleted successfully!');
     } catch (err: any) {
-      alert(err.response?.data?.detail || 'Failed to delete pipeline');
+      toast.error(err.response?.data?.detail || 'Failed to delete pipeline');
     }
   };
 

@@ -6,10 +6,12 @@ import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { runAPI, RunDetail } from '@/services/api';
 import { format } from 'date-fns';
+import { useToast } from '@/contexts/ToastContext';
 
 export default function RunDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const toast = useToast();
   const [run, setRun] = useState<RunDetail | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -85,7 +87,7 @@ export default function RunDetailPage() {
       window.URL.revokeObjectURL(url);
     } catch (err) {
       console.error('Download failed:', err);
-      alert('Failed to download file');
+      toast.error('Failed to download file');
     }
   };
 

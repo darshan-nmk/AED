@@ -11,6 +11,7 @@ import SettingsPage from './pages/SettingsPage';
 import ProfilePage from './pages/ProfilePage';
 import AppLayout from './components/layout/AppLayout';
 import { ThemeProvider } from './contexts/ThemeContext';
+import { ToastProvider } from './contexts/ToastContext';
 import { authAPI } from './services/api';
 
 function App() {
@@ -45,34 +46,36 @@ function App() {
 
   return (
     <ThemeProvider>
-      <Router>
-        <Routes>
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
-        
-        <Route
-          path="/*"
-          element={
-            isAuthenticated ? (
-              <AppLayout>
-                <Routes>
-                  <Route path="/pipelines" element={<PipelinesPage />} />
-                  <Route path="/pipelines/:id/editor" element={<EditorPage />} />
-                  <Route path="/pipelines/:id/runs" element={<RunsPage />} />
-                  <Route path="/runs/:id" element={<RunDetailPage />} />
-                  <Route path="/runs" element={<AllRunsPage />} />
-                  <Route path="/settings" element={<SettingsPage />} />
-                  <Route path="/profile" element={<ProfilePage />} />
-                  <Route path="/" element={<Navigate to="/pipelines" replace />} />
-                </Routes>
-              </AppLayout>
-            ) : (
-              <Navigate to="/login" replace />
-            )
-          }
-        />
-      </Routes>
-    </Router>
+      <ToastProvider>
+        <Router>
+          <Routes>
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/register" element={<RegisterPage />} />
+          
+          <Route
+            path="/*"
+            element={
+              isAuthenticated ? (
+                <AppLayout>
+                  <Routes>
+                    <Route path="/pipelines" element={<PipelinesPage />} />
+                    <Route path="/pipelines/:id/editor" element={<EditorPage />} />
+                    <Route path="/pipelines/:id/runs" element={<RunsPage />} />
+                    <Route path="/runs/:id" element={<RunDetailPage />} />
+                    <Route path="/runs" element={<AllRunsPage />} />
+                    <Route path="/settings" element={<SettingsPage />} />
+                    <Route path="/profile" element={<ProfilePage />} />
+                    <Route path="/" element={<Navigate to="/pipelines" replace />} />
+                  </Routes>
+                </AppLayout>
+              ) : (
+                <Navigate to="/login" replace />
+              )
+            }
+          />
+        </Routes>
+      </Router>
+      </ToastProvider>
     </ThemeProvider>
   );
 }

@@ -3,8 +3,10 @@ import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import api from '@/services/api';
+import { useToast } from '@/contexts/ToastContext';
 
 export default function SettingsPage() {
+  const toast = useToast();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [workspaceName, setWorkspaceName] = useState('');
@@ -36,10 +38,10 @@ export default function SettingsPage() {
         pipeline_timeout: timeout,
         email_notifications: emailNotifications,
       });
-      alert('Settings saved successfully!');
+      toast.success('Settings saved successfully!');
     } catch (error) {
       console.error('Failed to save settings:', error);
-      alert('Failed to save settings');
+      toast.error('Failed to save settings');
     } finally {
       setSaving(false);
     }

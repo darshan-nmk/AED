@@ -2,6 +2,7 @@ import { useState, useRef } from 'react';
 import { Upload, File, X, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { fileAPI, UploadedFile } from '@/services/api';
+import { useToast } from '@/contexts/ToastContext';
 
 interface FileUploadPanelProps {
   onFileSelect?: (file: UploadedFile) => void;
@@ -9,6 +10,7 @@ interface FileUploadPanelProps {
 }
 
 export default function FileUploadPanel({ onFileSelect, onPreview }: FileUploadPanelProps) {
+  const toast = useToast();
   const [files, setFiles] = useState<UploadedFile[]>([]);
   const [uploading, setUploading] = useState(false);
   const [dragActive, setDragActive] = useState(false);
@@ -72,7 +74,7 @@ export default function FileUploadPanel({ onFileSelect, onPreview }: FileUploadP
             !file.name.endsWith('.csv') && 
             !file.name.endsWith('.xlsx') && 
             !file.name.endsWith('.json')) {
-          alert(`Unsupported file type: ${file.name}`);
+          toast.warning(`Unsupported file type: ${file.name}`);
           continue;
         }
 
@@ -83,7 +85,7 @@ export default function FileUploadPanel({ onFileSelect, onPreview }: FileUploadP
       // Reload the file list to get the complete file info
       await loadFiles();
     } catch (error: any) {
-      alert(`Upload failed: ${error.response?.data?.detail || error.message}`);
+      toast.error(`Upload failed: ${error.response?.data?.detail || error.message}`);
     } finally {
       setUploading(false);
     }
@@ -95,7 +97,7 @@ export default function FileUploadPanel({ onFileSelect, onPreview }: FileUploadP
       setFiles(prev => prev.filter(f => f.id !== fileId));
     } catch (error) {
       console.error('Failed to delete file:', error);
-      alert('Failed to delete file');
+      toast.error('Failed to delete file');
     }
   };
 

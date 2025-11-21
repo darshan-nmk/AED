@@ -21,6 +21,7 @@ import NodePalette from '@/components/editor/NodePalette';
 import NodeConfigPanel from '@/components/editor/NodeConfigPanel';
 import SuggestionsPanel from '@/components/editor/SuggestionsPanel';
 import { validatePipeline, ValidationResult } from '@/utils/validation';
+import { useToast } from '@/contexts/ToastContext';
 
 const nodeTypes = {
   custom: CustomNode,
@@ -29,6 +30,7 @@ const nodeTypes = {
 function EditorPageContent() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const toast = useToast();
   const [_pipeline, setPipeline] = useState<Pipeline | null>(null);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -205,7 +207,7 @@ function EditorPageContent() {
 
   const handleSave = async () => {
     if (!name.trim()) {
-      alert('Please enter a pipeline name');
+      toast.warning('Please enter a pipeline name');
       return;
     }
 
@@ -213,7 +215,7 @@ function EditorPageContent() {
     const validation = validatePipeline(nodes, edges);
     if (!validation.valid) {
       setValidationResult(validation);
-      alert(`Cannot save: ${validation.errors.join(', ')}`);
+      toast.error(`Cannot save: ${validation.errors.join(', ')}`);
       return;
     }
 
@@ -242,7 +244,7 @@ function EditorPageContent() {
           nodes: pipelineNodes,
           edges: pipelineEdges,
         });
-        alert('Pipeline created successfully!');
+        toast.success('Pipeline created successfully!');
         navigate(`/pipelines/${newPipeline.id}/editor`);
       } else {
         const updated = await pipelineAPI.update(parseInt(id!), {
@@ -253,10 +255,10 @@ function EditorPageContent() {
         });
         setPipeline(updated);
         setValidationResult(null); // Clear validation after successful save
-        alert('Pipeline saved successfully!');
+        toast.success('Pipeline saved successfully!');
       }
     } catch (err: any) {
-      alert(err.response?.data?.detail || 'Failed to save pipeline');
+      toast.error(err.response?.data?.detail || 'Failed to save pipeline');
     } finally {
       setSaving(false);
     }
@@ -264,7 +266,7 @@ function EditorPageContent() {
 
   const handleRun = async () => {
     if (isNewPipeline) {
-      alert('Please save the pipeline before running');
+      toast.warning('Please save the pipeline before running');
       return;
     }
 
@@ -272,17 +274,17 @@ function EditorPageContent() {
     const validation = validatePipeline(nodes, edges);
     if (!validation.valid) {
       setValidationResult(validation);
-      alert(`Cannot run: ${validation.errors.join(', ')}`);
+      toast.error(`Cannot run: ${validation.errors.join(', ')}`);
       return;
     }
 
     try {
       setRunning(true);
       const run = await runAPI.trigger(parseInt(id!), true);
-      alert(`Pipeline started! Run ID: ${run.id}`);
+      toast.success(`Pipeline started! Run ID: ${run.id}`);
       navigate(`/runs/${run.id}`);
     } catch (err: any) {
-      alert(err.response?.data?.detail || 'Failed to start pipeline');
+      toast.error(err.response?.data?.detail || 'Failed to start pipeline');
     } finally {
       setRunning(false);
     }
@@ -298,7 +300,7 @@ function EditorPageContent() {
       );
 
       if (sourceNodes.length === 0) {
-        alert('No source files found. Please upload a file in a source node first.');
+        toast.warning('No source files found. Please upload a file in a source node first.');
         return;
       }
 
@@ -307,7 +309,7 @@ function EditorPageContent() {
       const fileId = sourceNode.data.config.file_id;
       
       if (!fileId) {
-        alert('No file ID found in source node. Please re-upload the file.');
+        toast.error('No file ID found in source node. Please re-upload the file.');
         return;
       }
 
@@ -317,7 +319,7 @@ function EditorPageContent() {
       setShowSuggestions(true);
     } catch (error: any) {
       console.error('Failed to load file sample:', error);
-      alert(error.response?.data?.detail || 'Failed to load file sample');
+      toast.error(error.response?.data?.detail || 'Failed to load file sample');
     } finally {
       setLoadingSample(false);
     }
@@ -339,7 +341,7 @@ function EditorPageContent() {
     };
     
     setNodes((nds) => [...nds, newNode]);
-    alert(`Applied suggestion: ${suggestion.suggestion}`);
+    toast.success(`Applied suggestion: ${suggestion.suggestion}`);
   };
 
   if (loading) {

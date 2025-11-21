@@ -4,8 +4,10 @@ import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { authAPI } from '@/services/api';
 import api from '@/services/api';
+import { useToast } from '@/contexts/ToastContext';
 
 export default function ProfilePage() {
+  const toast = useToast();
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
@@ -40,12 +42,12 @@ export default function ProfilePage() {
     try {
       // Note: This would need a backend endpoint to update user profile
       // For now, just show success (you can add the endpoint later)
-      alert('Profile updated successfully!');
+      toast.success('Profile updated successfully!');
       setEditing(false);
       await loadProfile();
     } catch (error) {
       console.error('Failed to update profile:', error);
-      alert('Failed to update profile');
+      toast.error('Failed to update profile');
     } finally {
       setSaving(false);
     }
@@ -59,12 +61,12 @@ export default function ProfilePage() {
 
   const handleChangePassword = async () => {
     if (newPassword !== confirmPassword) {
-      alert('New passwords do not match');
+      toast.error('New passwords do not match');
       return;
     }
 
     if (newPassword.length < 8) {
-      alert('Password must be at least 8 characters');
+      toast.warning('Password must be at least 8 characters');
       return;
     }
 
@@ -74,14 +76,14 @@ export default function ProfilePage() {
         current_password: currentPassword,
         new_password: newPassword,
       });
-      alert('Password changed successfully!');
+      toast.success('Password changed successfully!');
       setShowPasswordForm(false);
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
     } catch (error: any) {
       const message = error.response?.data?.detail || 'Failed to change password';
-      alert(message);
+      toast.error(message);
     } finally {
       setChanging(false);
     }

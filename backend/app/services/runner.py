@@ -328,7 +328,6 @@ def execute_transform_node(node: Dict[str, Any], input_df: pd.DataFrame,
             join_type = config.get('join_type', 'inner')  # inner, left, right, outer
             left_on = config.get('left_on')
             right_on = config.get('right_on')
-            right_node_id = config.get('right_node_id')  # Reference to second input node
             suffixes = config.get('suffixes', ('_left', '_right'))  # Suffix for duplicate columns
             
             if not left_on:
@@ -337,8 +336,15 @@ def execute_transform_node(node: Dict[str, Any], input_df: pd.DataFrame,
             if not right_on:
                 raise ValueError("JOIN requires 'right_on' column")
             
+            # The right_node_id should be passed from the execution context
+            # It's the second input node to this JOIN node
+            right_node_id = config.get('right_node_id')
+            
             if not right_node_id:
-                raise ValueError("JOIN requires 'right_node_id' to specify the second data source")
+                raise ValueError(
+                    "JOIN requires 'right_node_id' to specify the second data source. "
+                    "This should be automatically set based on the incoming edges."
+                )
             
             # Get the right dataframe from results context
             if right_node_id not in results_context:
@@ -715,14 +721,22 @@ def execute_pipeline(pipeline_json: Dict[str, Any], run_id: int, db: Session, pi
             elif node_type == 'TRANSFORM':
                 # Get input from predecessor
                 incoming_edges = [e for e in edges 
-                                if (e.get('to') or e.get('to_node')) == node_id]
+                                if (e.get('to') or e.get('to_node') or e.get('target')) == node_id]
                 
                 if not incoming_edges:
                     raise ValueError(f"Transform node {node_id} has no input")
                 
                 # Use first incoming edge as primary input
-                from_node = incoming_edges[0].get('from') or incoming_edges[0].get('from_node')
+                from_node = incoming_edges[0].get('from') or incoming_edges[0].get('from_node') or incoming_edges[0].get('source')
                 input_df = results[from_node]
+                
+                # For JOIN nodes, automatically set right_node_id from second incoming edge
+                if node.get('subtype') == 'JOIN' and len(incoming_edges) >= 2:
+                    right_node = incoming_edges[1].get('from') or incoming_edges[1].get('from_node') or incoming_edges[1].get('source')
+                    # Inject right_node_id into config for the JOIN operation
+                    if 'config' not in node:
+                        node['config'] = {}
+                    node['config']['right_node_id'] = right_node
                 
                 # Pass results context for multi-input operations like JOIN
                 df = execute_transform_node(node, input_df, db, run_id, results_context=results)
@@ -731,12 +745,12 @@ def execute_pipeline(pipeline_json: Dict[str, Any], run_id: int, db: Session, pi
             elif node_type == 'LOAD':
                 # Get input from predecessor
                 incoming_edges = [e for e in edges 
-                                if (e.get('to') or e.get('to_node')) == node_id]
+                                if (e.get('to') or e.get('to_node') or e.get('target')) == node_id]
                 
                 if not incoming_edges:
                     raise ValueError(f"Load node {node_id} has no input")
                 
-                from_node = incoming_edges[0].get('from') or incoming_edges[0].get('from_node')
+                from_node = incoming_edges[0].get('from') or incoming_edges[0].get('from_node') or incoming_edges[0].get('source')
                 input_df = results[from_node]
                 
                 output_path = execute_load_node(node, input_df, db, run_id, pipeline_name)

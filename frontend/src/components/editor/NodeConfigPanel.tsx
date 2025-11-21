@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/Input';
 import { Node, Edge } from 'reactflow';
 import { useState, useEffect } from 'react';
 import { fileAPI } from '@/services/api';
+import { useToast } from '@/contexts/ToastContext';
 
 interface NodeConfigPanelProps {
   node: Node | null;
@@ -19,6 +20,7 @@ export default function NodeConfigPanel({ node, nodes, edges, pipelineName, onCl
   const [uploading, setUploading] = useState(false);
   const [availableColumns, setAvailableColumns] = useState<string[]>([]);
   const [loadingColumns, setLoadingColumns] = useState(false);
+  const toast = useToast();
   
   if (!node) return null;
 
@@ -104,11 +106,11 @@ export default function NodeConfigPanel({ node, nodes, edges, pipelineName, onCl
       // Reset the file input so the same file can be uploaded again if needed
       event.target.value = '';
       
-      // Show success alert after state updates
-      alert('File uploaded successfully!');
+      // Show success toast after state updates
+      toast.success('File uploaded successfully!');
     } catch (error: any) {
       console.error('Upload error:', error);
-      alert(`Upload failed: ${error.response?.data?.detail || error.message}`);
+      toast.error(`Upload failed: ${error.response?.data?.detail || error.message}`);
       event.target.value = '';
     } finally {
       setUploading(false);
@@ -463,7 +465,9 @@ export default function NodeConfigPanel({ node, nodes, edges, pipelineName, onCl
             <label className="block text-sm font-medium text-slate-300 mb-1">
               Column
             </label>
-            {availableColumns.length > 0 ? (
+            {loadingColumns ? (
+              <p className="text-xs text-slate-400">Loading columns...</p>
+            ) : availableColumns.length > 0 ? (
               <select
                 className="input"
                 value={node.data.config?.column || ''}
@@ -502,6 +506,8 @@ export default function NodeConfigPanel({ node, nodes, edges, pipelineName, onCl
               <option value=">=">Greater or Equal (&gt;=)</option>
               <option value="<=">Less or Equal (&lt;=)</option>
               <option value="contains">Contains</option>
+              <option value="startswith">Starts With</option>
+              <option value="endswith">Ends With</option>
             </select>
           </div>
           <Input
@@ -829,8 +835,84 @@ export default function NodeConfigPanel({ node, nodes, edges, pipelineName, onCl
 
     // JOIN Transform
     if (type === 'TRANSFORM' && subtype === 'JOIN') {
+      // Get incoming edges to this JOIN node
+      const incomingEdges = edges.filter(edge => edge.target === node.id);
+      const leftSourceNode = incomingEdges[0] ? nodes.find(n => n.id === incomingEdges[0].source) : null;
+      const rightSourceNode = incomingEdges[1] ? nodes.find(n => n.id === incomingEdges[1].source) : null;
+      
+      // Get columns from both source nodes
+      const [leftColumns, setLeftColumns] = useState<string[]>([]);
+      const [rightColumns, setRightColumns] = useState<string[]>([]);
+      const [loadingLeftCols, setLoadingLeftCols] = useState(false);
+      const [loadingRightCols, setLoadingRightCols] = useState(false);
+      
+      useEffect(() => {
+        const fetchLeftColumns = async () => {
+          if (!leftSourceNode) {
+            setLeftColumns([]);
+            return;
+          }
+          
+          setLoadingLeftCols(true);
+          try {
+            if (leftSourceNode.data.type === 'SOURCE' && leftSourceNode.data.config?.file_id) {
+              const sample = await fileAPI.getSample(leftSourceNode.data.config.file_id, 1);
+              setLeftColumns(sample.columns || []);
+            }
+          } catch (error) {
+            console.error('Failed to fetch left columns:', error);
+            setLeftColumns([]);
+          } finally {
+            setLoadingLeftCols(false);
+          }
+        };
+        
+        fetchLeftColumns();
+      }, [leftSourceNode?.id, leftSourceNode?.data.config?.file_id]);
+      
+      useEffect(() => {
+        const fetchRightColumns = async () => {
+          if (!rightSourceNode) {
+            setRightColumns([]);
+            return;
+          }
+          
+          setLoadingRightCols(true);
+          try {
+            if (rightSourceNode.data.type === 'SOURCE' && rightSourceNode.data.config?.file_id) {
+              const sample = await fileAPI.getSample(rightSourceNode.data.config.file_id, 1);
+              setRightColumns(sample.columns || []);
+            }
+          } catch (error) {
+            console.error('Failed to fetch right columns:', error);
+            setRightColumns([]);
+          } finally {
+            setLoadingRightCols(false);
+          }
+        };
+        
+        fetchRightColumns();
+      }, [rightSourceNode?.id, rightSourceNode?.data.config?.file_id]);
+      
       return (
         <>
+          <div className="mb-4 p-3 bg-slate-800 rounded border border-slate-700">
+            <p className="text-xs text-slate-400 mb-2">Connected Source Nodes:</p>
+            <div className="space-y-1 text-sm">
+              <div className="flex items-center gap-2">
+                <span className="text-blue-400">Left:</span>
+                <span className="text-slate-300">{leftSourceNode?.data.label || 'Not connected'}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-green-400">Right:</span>
+                <span className="text-slate-300">{rightSourceNode?.data.label || 'Not connected'}</span>
+              </div>
+            </div>
+            {incomingEdges.length < 2 && (
+              <p className="text-xs text-yellow-400 mt-2">⚠ JOIN requires 2 input connections</p>
+            )}
+          </div>
+          
           <div>
             <label className="block text-sm font-medium text-slate-300 mb-1">
               Join Type
@@ -847,18 +929,60 @@ export default function NodeConfigPanel({ node, nodes, edges, pipelineName, onCl
               <option value="outer">Outer Join</option>
             </select>
           </div>
-          <Input
-            label="Left Key"
-            placeholder="id"
-            value={node.data.config?.left_key || ''}
-            onChange={(e) => handleConfigChange('left_key', e.target.value)}
-          />
-          <Input
-            label="Right Key"
-            placeholder="user_id"
-            value={node.data.config?.right_key || ''}
-            onChange={(e) => handleConfigChange('right_key', e.target.value)}
-          />
+          
+          <div>
+            <label className="block text-sm font-medium text-slate-300 mb-1">
+              Left Key {leftSourceNode && `(${leftSourceNode.data.label})`}
+            </label>
+            {loadingLeftCols ? (
+              <p className="text-xs text-slate-400">Loading columns...</p>
+            ) : leftColumns.length > 0 ? (
+              <select
+                className="input"
+                value={node.data.config?.left_on || ''}
+                onChange={(e) => handleConfigChange('left_on', e.target.value)}
+                aria-label="Left join key"
+              >
+                <option value="">Select column...</option>
+                {leftColumns.map((col) => (
+                  <option key={col} value={col}>{col}</option>
+                ))}
+              </select>
+            ) : (
+              <Input
+                placeholder="customer_id"
+                value={node.data.config?.left_on || ''}
+                onChange={(e) => handleConfigChange('left_on', e.target.value)}
+              />
+            )}
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-slate-300 mb-1">
+              Right Key {rightSourceNode && `(${rightSourceNode.data.label})`}
+            </label>
+            {loadingRightCols ? (
+              <p className="text-xs text-slate-400">Loading columns...</p>
+            ) : rightColumns.length > 0 ? (
+              <select
+                className="input"
+                value={node.data.config?.right_on || ''}
+                onChange={(e) => handleConfigChange('right_on', e.target.value)}
+                aria-label="Right join key"
+              >
+                <option value="">Select column...</option>
+                {rightColumns.map((col) => (
+                  <option key={col} value={col}>{col}</option>
+                ))}
+              </select>
+            ) : (
+              <Input
+                placeholder="customer_id"
+                value={node.data.config?.right_on || ''}
+                onChange={(e) => handleConfigChange('right_on', e.target.value)}
+              />
+            )}
+          </div>
         </>
       );
     }
@@ -994,19 +1118,342 @@ export default function NodeConfigPanel({ node, nodes, edges, pipelineName, onCl
     if (type === 'TRANSFORM' && subtype === 'DROP_DUPLICATES') {
       return (
         <>
+          {loadingColumns ? (
+            <p className="text-xs text-slate-400">Loading columns...</p>
+          ) : availableColumns.length > 0 ? (
+            <div>
+              <label className="block text-sm font-medium text-slate-300 mb-2">
+                Columns to Check for Duplicates (select one or more, empty = all)
+              </label>
+              <div className="space-y-1 max-h-60 overflow-y-auto border border-slate-700 rounded p-2">
+                {availableColumns.map((col) => (
+                  <label key={col} className="flex items-center gap-2 p-1 hover:bg-slate-800 rounded cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={node.data.config?.columns?.includes(col) || false}
+                      onChange={(e) => {
+                        const currentCols = node.data.config?.columns || [];
+                        const newCols = e.target.checked
+                          ? [...currentCols, col]
+                          : currentCols.filter((c: string) => c !== col);
+                        handleConfigChange('columns', newCols.length > 0 ? newCols : null);
+                      }}
+                      className="rounded"
+                    />
+                    <span className="text-sm text-slate-300">{col}</span>
+                  </label>
+                ))}
+              </div>
+              {node.data.config?.columns && node.data.config.columns.length > 0 && (
+                <p className="text-xs text-slate-400 mt-2">
+                  Checking: {node.data.config.columns.join(', ')}
+                </p>
+              )}
+              <p className="text-xs text-slate-500 mt-2">
+                Leave empty to check all columns for exact duplicate rows
+              </p>
+            </div>
+          ) : (
+            <div>
+              <label className="block text-sm font-medium text-slate-300 mb-1">
+                Columns to Check (comma-separated, empty = all)
+              </label>
+              <Input
+                placeholder="email, phone (leave empty for all columns)"
+                value={node.data.config?.columns?.join(', ') || ''}
+                onChange={(e) => {
+                  const value = e.target.value.trim();
+                  handleConfigChange('columns', value ? value.split(',').map(s => s.trim()) : null);
+                }}
+              />
+            </div>
+          )}
+        </>
+      );
+    }
+
+    // NORMALIZE Transform
+    if (type === 'TRANSFORM' && subtype === 'NORMALIZE') {
+      return (
+        <>
           <div>
             <label className="block text-sm font-medium text-slate-300 mb-1">
-              Columns to Check (comma-separated, empty = all)
+              Column to Normalize
             </label>
-            <Input
-              placeholder="email, phone (leave empty for all columns)"
-              value={node.data.config?.columns?.join(', ') || ''}
-              onChange={(e) => {
-                const value = e.target.value.trim();
-                handleConfigChange('columns', value ? value.split(',').map(s => s.trim()) : null);
-              }}
-            />
+            {loadingColumns ? (
+              <p className="text-xs text-slate-400">Loading columns...</p>
+            ) : availableColumns.length > 0 ? (
+              <select
+                className="input"
+                value={node.data.config?.column || ''}
+                onChange={(e) => handleConfigChange('column', e.target.value)}
+                aria-label="Normalize column"
+              >
+                <option value="">Select column...</option>
+                {availableColumns.map((col) => (
+                  <option key={col} value={col}>{col}</option>
+                ))}
+              </select>
+            ) : (
+              <Input
+                placeholder="Column name"
+                value={node.data.config?.column || ''}
+                onChange={(e) => handleConfigChange('column', e.target.value)}
+              />
+            )}
           </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-300 mb-1">
+              Method
+            </label>
+            <select
+              className="input"
+              value={node.data.config?.method || 'minmax'}
+              onChange={(e) => handleConfigChange('method', e.target.value)}
+              aria-label="Normalization method"
+            >
+              <option value="minmax">Min-Max (0-1)</option>
+              <option value="zscore">Z-Score (Standard)</option>
+              <option value="robust">Robust (Median)</option>
+            </select>
+          </div>
+        </>
+      );
+    }
+
+    // STRING_TRANSFORM Transform
+    if (type === 'TRANSFORM' && subtype === 'STRING_TRANSFORM') {
+      return (
+        <>
+          <div>
+            <label className="block text-sm font-medium text-slate-300 mb-1">
+              Column
+            </label>
+            {loadingColumns ? (
+              <p className="text-xs text-slate-400">Loading columns...</p>
+            ) : availableColumns.length > 0 ? (
+              <select
+                className="input"
+                value={node.data.config?.column || ''}
+                onChange={(e) => handleConfigChange('column', e.target.value)}
+                aria-label="String transform column"
+              >
+                <option value="">Select column...</option>
+                {availableColumns.map((col) => (
+                  <option key={col} value={col}>{col}</option>
+                ))}
+              </select>
+            ) : (
+              <Input
+                placeholder="Column name"
+                value={node.data.config?.column || ''}
+                onChange={(e) => handleConfigChange('column', e.target.value)}
+              />
+            )}
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-300 mb-1">
+              Operation
+            </label>
+            <select
+              className="input"
+              value={node.data.config?.operation || 'uppercase'}
+              onChange={(e) => handleConfigChange('operation', e.target.value)}
+              aria-label="String operation"
+            >
+              <option value="uppercase">UPPERCASE</option>
+              <option value="lowercase">lowercase</option>
+              <option value="title">Title Case</option>
+              <option value="strip">Strip Whitespace</option>
+              <option value="replace">Replace Text</option>
+              <option value="extract">Extract Pattern (Regex)</option>
+            </select>
+          </div>
+          {node.data.config?.operation === 'replace' && (
+            <>
+              <Input
+                label="Find"
+                placeholder="Text to find"
+                value={node.data.config?.find || ''}
+                onChange={(e) => handleConfigChange('find', e.target.value)}
+              />
+              <Input
+                label="Replace With"
+                placeholder="Replacement text"
+                value={node.data.config?.replace || ''}
+                onChange={(e) => handleConfigChange('replace', e.target.value)}
+              />
+            </>
+          )}
+          {node.data.config?.operation === 'extract' && (
+            <Input
+              label="Regex Pattern"
+              placeholder="\\d+"
+              value={node.data.config?.pattern || ''}
+              onChange={(e) => handleConfigChange('pattern', e.target.value)}
+            />
+          )}
+        </>
+      );
+    }
+
+    // FILTER_OUTLIERS Transform
+    if (type === 'TRANSFORM' && subtype === 'FILTER_OUTLIERS') {
+      return (
+        <>
+          <div>
+            <label className="block text-sm font-medium text-slate-300 mb-1">
+              Column
+            </label>
+            {loadingColumns ? (
+              <p className="text-xs text-slate-400">Loading columns...</p>
+            ) : availableColumns.length > 0 ? (
+              <select
+                className="input"
+                value={node.data.config?.column || ''}
+                onChange={(e) => handleConfigChange('column', e.target.value)}
+                aria-label="Outlier filter column"
+              >
+                <option value="">Select column...</option>
+                {availableColumns.map((col) => (
+                  <option key={col} value={col}>{col}</option>
+                ))}
+              </select>
+            ) : (
+              <Input
+                placeholder="Column name"
+                value={node.data.config?.column || ''}
+                onChange={(e) => handleConfigChange('column', e.target.value)}
+              />
+            )}
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-300 mb-1">
+              Method
+            </label>
+            <select
+              className="input"
+              value={node.data.config?.method || 'iqr'}
+              onChange={(e) => handleConfigChange('method', e.target.value)}
+              aria-label="Outlier detection method"
+            >
+              <option value="iqr">IQR (Interquartile Range)</option>
+              <option value="zscore">Z-Score (Standard Deviation)</option>
+            </select>
+          </div>
+          <Input
+            label="Threshold"
+            placeholder="1.5 for IQR, 3 for Z-Score"
+            type="number"
+            step="0.1"
+            value={node.data.config?.threshold || ''}
+            onChange={(e) => handleConfigChange('threshold', parseFloat(e.target.value) || 1.5)}
+          />
+        </>
+      );
+    }
+
+    // SPLIT_COLUMN Transform
+    if (type === 'TRANSFORM' && subtype === 'SPLIT_COLUMN') {
+      return (
+        <>
+          <div>
+            <label className="block text-sm font-medium text-slate-300 mb-1">
+              Column to Split
+            </label>
+            {loadingColumns ? (
+              <p className="text-xs text-slate-400">Loading columns...</p>
+            ) : availableColumns.length > 0 ? (
+              <select
+                className="input"
+                value={node.data.config?.column || ''}
+                onChange={(e) => handleConfigChange('column', e.target.value)}
+                aria-label="Split column"
+              >
+                <option value="">Select column...</option>
+                {availableColumns.map((col) => (
+                  <option key={col} value={col}>{col}</option>
+                ))}
+              </select>
+            ) : (
+              <Input
+                placeholder="Column name"
+                value={node.data.config?.column || ''}
+                onChange={(e) => handleConfigChange('column', e.target.value)}
+              />
+            )}
+          </div>
+          <Input
+            label="Delimiter"
+            placeholder="Separator (e.g., comma, space, hyphen)"
+            value={node.data.config?.delimiter || ','}
+            onChange={(e) => handleConfigChange('delimiter', e.target.value)}
+          />
+          <Input
+            label="New Column Names (comma-separated)"
+            placeholder="col1, col2, col3"
+            value={node.data.config?.new_columns?.join(', ') || ''}
+            onChange={(e) => {
+              const value = e.target.value.trim();
+              handleConfigChange('new_columns', value ? value.split(',').map(s => s.trim()) : []);
+            }}
+          />
+        </>
+      );
+    }
+
+    // REMOVE_OUTLIERS Transform (alias for FILTER_OUTLIERS)
+    if (type === 'TRANSFORM' && subtype === 'REMOVE_OUTLIERS') {
+      return (
+        <>
+          <div>
+            <label className="block text-sm font-medium text-slate-300 mb-1">
+              Column
+            </label>
+            {loadingColumns ? (
+              <p className="text-xs text-slate-400">Loading columns...</p>
+            ) : availableColumns.length > 0 ? (
+              <select
+                className="input"
+                value={node.data.config?.column || ''}
+                onChange={(e) => handleConfigChange('column', e.target.value)}
+                aria-label="Remove outliers column"
+              >
+                <option value="">Select column...</option>
+                {availableColumns.map((col) => (
+                  <option key={col} value={col}>{col}</option>
+                ))}
+              </select>
+            ) : (
+              <Input
+                placeholder="Column name"
+                value={node.data.config?.column || ''}
+                onChange={(e) => handleConfigChange('column', e.target.value)}
+              />
+            )}
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-300 mb-1">
+              Method
+            </label>
+            <select
+              className="input"
+              value={node.data.config?.method || 'iqr'}
+              onChange={(e) => handleConfigChange('method', e.target.value)}
+              aria-label="Outlier removal method"
+            >
+              <option value="iqr">IQR (Interquartile Range)</option>
+              <option value="zscore">Z-Score (Standard Deviation)</option>
+            </select>
+          </div>
+          <Input
+            label="Threshold"
+            placeholder="1.5 for IQR, 3 for Z-Score"
+            type="number"
+            step="0.1"
+            value={node.data.config?.threshold || ''}
+            onChange={(e) => handleConfigChange('threshold', parseFloat(e.target.value) || 1.5)}
+          />
         </>
       );
     }

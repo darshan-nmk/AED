@@ -208,11 +208,11 @@ def validate_node_configs(nodes: List[Dict]) -> List[str]:
             if not config.get('join_type'):
                 errors.append(f"Node '{node_id}': Join requires 'join_type'")
             if not config.get('left_on') or not config.get('right_on'):
-                errors.append(f"Node '{node_id}': Join requires 'left_on' and 'right_on'")
+                errors.append(f"Node '{node_id}': Join requires 'left_on' and 'right_on' keys")
         
         elif subtype in ['CSV_LOAD', 'EXCEL_LOAD', 'JSON_LOAD']:
-            if not config.get('output_path'):
-                errors.append(f"Node '{node_id}': Load requires 'output_path'")
+            # output_path is optional - will default to pipeline name if not provided
+            pass
         
         elif subtype == 'DB_LOAD':
             if not config.get('connection_string'):

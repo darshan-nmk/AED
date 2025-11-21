@@ -6,10 +6,12 @@ import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { pipelineAPI, runAPI, Run } from '@/services/api';
 import { formatDistanceToNow } from 'date-fns';
+import { useToast } from '@/contexts/ToastContext';
 
 export default function RunsPage() {
   const { id } = useParams(); // pipeline id
   const navigate = useNavigate();
+  const toast = useToast();
   const [runs, setRuns] = useState<Run[]>([]);
   const [loading, setLoading] = useState(true);
   const [pipelineName, setPipelineName] = useState('');
@@ -43,10 +45,10 @@ export default function RunsPage() {
     
     try {
       const newRun = await runAPI.trigger(parseInt(id));
-      alert('Pipeline run triggered successfully!');
+      toast.success('Pipeline run triggered successfully!');
       setRuns([newRun, ...runs]);
     } catch (err: any) {
-      alert(err.response?.data?.detail || 'Failed to trigger run');
+      toast.error(err.response?.data?.detail || 'Failed to trigger run');
     }
   };
 
