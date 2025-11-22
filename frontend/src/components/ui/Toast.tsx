@@ -19,27 +19,27 @@ export function Toast({ message, type, onClose, duration = 4000 }: ToastProps) {
     return () => clearTimeout(timer);
   }, [duration, onClose]);
 
-  const icons = {
-    success: <CheckCircle className="w-5 h-5 text-green-400" />,
-    error: <XCircle className="w-5 h-5 text-red-400" />,
-    warning: <AlertCircle className="w-5 h-5 text-yellow-400" />,
-    info: <Info className="w-5 h-5 text-blue-400" />,
+  const styles = {
+    success: 'bg-green-600 border-green-500 text-white shadow-xl',
+    error: 'bg-red-600 border-red-500 text-white shadow-xl',
+    warning: 'bg-yellow-600 border-yellow-500 text-white shadow-xl',
+    info: 'bg-blue-600 border-blue-500 text-white shadow-xl',
   };
 
-  const styles = {
-    success: 'bg-green-500/10 border-green-500/30 text-green-400',
-    error: 'bg-red-500/10 border-red-500/30 text-red-400',
-    warning: 'bg-yellow-500/10 border-yellow-500/30 text-yellow-400',
-    info: 'bg-blue-500/10 border-blue-500/30 text-blue-400',
+  const iconStyles = {
+    success: <CheckCircle className="w-5 h-5 text-white" />,
+    error: <XCircle className="w-5 h-5 text-white" />,
+    warning: <AlertCircle className="w-5 h-5 text-white" />,
+    info: <Info className="w-5 h-5 text-white" />,
   };
 
   return (
-    <div className={`flex items-center gap-3 px-4 py-3 rounded-lg border ${styles[type]} shadow-lg animate-slide-in-right max-w-md`}>
-      {icons[type]}
-      <p className="flex-1 text-sm font-medium text-slate-200">{message}</p>
+    <div className={`flex items-center gap-3 px-4 py-3 rounded-lg border-2 ${styles[type]} animate-slide-in-right max-w-md min-w-[300px]`}>
+      {iconStyles[type]}
+      <p className="flex-1 text-sm font-semibold text-white">{message}</p>
       <button
         onClick={onClose}
-        className="text-slate-400 hover:text-slate-200 transition-colors"
+        className="text-white/80 hover:text-white transition-colors"
         aria-label="Close notification"
       >
         <X className="w-4 h-4" />
