@@ -386,16 +386,28 @@ export default function NodeConfigPanel({ node, nodes, edges, pipelineName, onCl
       return (
         <>
           <Input
+            type="text"
             label="API Endpoint"
             placeholder="https://api.example.com/data"
             value={node.data.config?.endpoint || ''}
             onChange={(e) => handleConfigChange('endpoint', e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+              }
+            }}
           />
           <Input
+            type="text"
             label="Method"
             placeholder="GET"
             value={node.data.config?.method || (type === 'SOURCE' ? 'GET' : 'POST')}
-            onChange={(e) => handleConfigChange('method', e.target.value)}
+            onChange={(e) => handleConfigChange('method', e.target.value.toUpperCase())}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+              }
+            }}
           />
           <div>
             <label className="block text-sm font-medium text-slate-300 mb-1">
@@ -406,6 +418,11 @@ export default function NodeConfigPanel({ node, nodes, edges, pipelineName, onCl
               placeholder='{"Authorization": "Bearer token"}'
               value={node.data.config?.headers || ''}
               onChange={(e) => handleConfigChange('headers', e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.stopPropagation();
+                }
+              }}
             />
           </div>
         </>
