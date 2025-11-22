@@ -94,6 +94,8 @@ def list_pipelines(db: Session, user: User, skip: int = 0, limit: int = 20) -> L
 def update_pipeline(db: Session, pipeline_id: int, pipeline_update: PipelineUpdate, 
                    user: User) -> Pipeline:
     """Update a pipeline"""
+    from datetime import datetime
+    
     # Get and verify ownership
     db_pipeline = get_pipeline(db, pipeline_id, user)
     
@@ -105,16 +107,19 @@ def update_pipeline(db: Session, pipeline_id: int, pipeline_update: PipelineUpda
         db_pipeline.description = pipeline_update.description
     
     if pipeline_update.nodes is not None or pipeline_update.edges is not None:
-        # Rebuild pipeline JSON
-        current_json = db_pipeline.pipeline_json
-        
-        if pipeline_update.nodes is not None:
-            current_json['nodes'] = [node.model_dump() for node in pipeline_update.nodes]
-        
-        if pipeline_update.edges is not None:
-            current_json['edges'] = [edge.model_dump(by_alias=True) for edge in pipeline_update.edges]
-        
-        db_pipeline.pipeline_json = current_json
+        # Rebuild pipeline JSON - create new dict to trigger SQLAlchemy change detection
+        pipeline_json = {
+            'nodes': [node.model_dump() for node in pipeline_update.nodes] if pipeline_update.nodes is not None else db_pipeline.pipeline_json.get('nodes', []),
+            'edges': [edge.model_dump(by_alias=True) for edge in pipeline_update.edges] if pipeline_update.edges is not None else db_pipeline.pipeline_json.get('edges', [])
+        }
+        db_pipeline.pipeline_json = pipeline_json
+    
+    # Explicitly update timestamp to ensure it changes
+    db_pipeline.updated_at = datetime.utcnow()
+    
+    # Mark as modified for SQLAlchemy
+    from sqlalchemy.orm.attributes import flag_modified
+    flag_modified(db_pipeline, 'pipeline_json')
     
     db.commit()
     db.refresh(db_pipeline)

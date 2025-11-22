@@ -739,58 +739,77 @@ export default function NodeConfigPanel({ node, nodes, edges, pipelineName, onCl
                 </label>
                 <div className="space-y-2">
                   {aggregations.map((agg: any, idx: number) => (
-                    <div key={idx} className="flex gap-2 items-center p-2 bg-slate-800 rounded">
-                      <select
-                        className="input flex-1 text-sm"
-                        value={agg.column || ''}
-                        onChange={(e) => {
-                          const newAggs = [...aggregations];
-                          newAggs[idx] = { ...agg, column: e.target.value };
-                          handleConfigChange('aggregations', newAggs);
-                        }}
-                        aria-label="Aggregation column"
-                      >
-                        <option value="">Select column...</option>
-                        {availableColumns.map((col) => (
-                          <option key={col} value={col}>{col}</option>
-                        ))}
-                      </select>
-                      <select
-                        className="input text-sm"
-                        value={agg.agg || 'sum'}
-                        onChange={(e) => {
-                          const newAggs = [...aggregations];
-                          newAggs[idx] = { ...agg, agg: e.target.value };
-                          handleConfigChange('aggregations', newAggs);
-                        }}
-                        aria-label="Aggregation function"
-                      >
-                        <option value="sum">sum</option>
-                        <option value="mean">mean</option>
-                        <option value="count">count</option>
-                        <option value="min">min</option>
-                        <option value="max">max</option>
-                      </select>
-                      <button
-                        onClick={() => {
-                          const newAggs = aggregations.filter((_: any, i: number) => i !== idx);
-                          handleConfigChange('aggregations', newAggs);
-                        }}
-                        className="text-red-400 hover:text-red-300 text-xs px-2"
-                      >
-                        ✕
-                      </button>
+                    <div key={idx} className="p-3 bg-slate-800 rounded space-y-2">
+                      <div className="flex gap-2 items-center">
+                        <select
+                          className="input flex-1 text-sm"
+                          value={agg.column || ''}
+                          onChange={(e) => {
+                            const newAggs = [...aggregations];
+                            newAggs[idx] = { ...agg, column: e.target.value };
+                            handleConfigChange('aggregations', newAggs);
+                          }}
+                          aria-label="Column to aggregate"
+                        >
+                          <option value="">Select column...</option>
+                          {availableColumns.map((col) => (
+                            <option key={col} value={col}>{col}</option>
+                          ))}
+                        </select>
+                        <select
+                          className="input text-sm"
+                          value={agg.agg || 'sum'}
+                          onChange={(e) => {
+                            const newAggs = [...aggregations];
+                            newAggs[idx] = { ...agg, agg: e.target.value };
+                            handleConfigChange('aggregations', newAggs);
+                          }}
+                          aria-label="Aggregation function"
+                        >
+                          <option value="sum">SUM</option>
+                          <option value="mean">AVG</option>
+                          <option value="count">COUNT</option>
+                          <option value="min">MIN</option>
+                          <option value="max">MAX</option>
+                        </select>
+                        <button
+                          onClick={() => {
+                            const newAggs = aggregations.filter((_: any, i: number) => i !== idx);
+                            handleConfigChange('aggregations', newAggs);
+                          }}
+                          className="text-red-400 hover:text-red-300 text-xs px-2"
+                          title="Remove aggregation"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                      <div className="flex gap-2 items-center">
+                        <span className="text-xs text-slate-500 w-16">Output as:</span>
+                        <input
+                          type="text"
+                          className="input flex-1 text-sm"
+                          placeholder={`${agg.column || 'column'}_${agg.agg || 'sum'}`}
+                          value={agg.as || agg.output_column || ''}
+                          onChange={(e) => {
+                            const newAggs = [...aggregations];
+                            newAggs[idx] = { ...agg, as: e.target.value };
+                            handleConfigChange('aggregations', newAggs);
+                          }}
+                          aria-label="Output column name"
+                        />
+                      </div>
                     </div>
                   ))}
                   <button
                     onClick={() => {
-                      handleConfigChange('aggregations', [...aggregations, { column: '', agg: 'sum' }]);
+                      handleConfigChange('aggregations', [...aggregations, { column: '', agg: 'sum', as: '' }]);
                     }}
                     className="w-full p-2 border border-dashed border-slate-600 rounded hover:border-blue-500 text-sm text-slate-400"
                   >
                     + Add Aggregation
                   </button>
                 </div>
+                <p className="text-xs text-slate-500 mt-2">Tip: Specify output names like 'total_sales', 'avg_price', 'order_count'</p>
               </div>
             </>
           ) : (

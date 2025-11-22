@@ -34,8 +34,8 @@ class User(Base):
     email = Column(String(255), unique=True, nullable=False, index=True)
     password_hash = Column(String(255), nullable=False)
     role = Column(SQLEnum(UserRole), default=UserRole.ANALYST)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    created_at = Column(DateTime(timezone=True), server_default=func.utc_timestamp())
+    updated_at = Column(DateTime(timezone=True), server_default=func.utc_timestamp(), onupdate=func.utc_timestamp())
     
     # Relationships
     pipelines = relationship("Pipeline", back_populates="owner", cascade="all, delete-orphan")
@@ -49,8 +49,8 @@ class Pipeline(Base):
     description = Column(Text, nullable=True)
     owner_id = Column(BigInteger, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     pipeline_json = Column(JSON, nullable=False)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    created_at = Column(DateTime(timezone=True), server_default=func.utc_timestamp())
+    updated_at = Column(DateTime(timezone=True), server_default=func.utc_timestamp(), onupdate=func.utc_timestamp())
     
     # Relationships
     owner = relationship("User", back_populates="pipelines")
@@ -68,7 +68,7 @@ class PipelineRun(Base):
     result_location = Column(String(1024), nullable=True)
     triggered_by = Column(BigInteger, ForeignKey("users.id"), nullable=False)
     error_message = Column(Text, nullable=True)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    created_at = Column(DateTime(timezone=True), server_default=func.utc_timestamp())
     
     # Relationships
     pipeline = relationship("Pipeline", back_populates="runs")
@@ -85,7 +85,7 @@ class RunLog(Base):
     message = Column(Text, nullable=False)
     rows_in = Column(Integer, nullable=True)
     rows_out = Column(Integer, nullable=True)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    created_at = Column(DateTime(timezone=True), server_default=func.utc_timestamp())
     
     # Relationships
     run = relationship("PipelineRun", back_populates="logs")
@@ -101,6 +101,6 @@ class UserSettings(Base):
     email_notifications = Column(Boolean, nullable=False, default=True)
     api_key = Column(String(255), nullable=True)  # For external integrations
     theme = Column(String(50), nullable=False, default="dark")
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    created_at = Column(DateTime(timezone=True), server_default=func.utc_timestamp())
+    updated_at = Column(DateTime(timezone=True), server_default=func.utc_timestamp(), onupdate=func.utc_timestamp())
 

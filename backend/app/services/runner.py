@@ -306,17 +306,44 @@ def execute_transform_node(node: Dict[str, Any], input_df: pd.DataFrame,
             group_by = config.get('group_by', [])
             aggregations = config.get('aggregations', [])
             
+            if not group_by:
+                raise ValueError("AGGREGATE requires at least one 'group_by' column")
+            if not aggregations:
+                raise ValueError("AGGREGATE requires at least one aggregation")
+            
+            # Build aggregation dict with proper naming
             agg_dict = {}
+            rename_map = {}
+            
             for agg in aggregations:
                 col = agg['column']
                 agg_func = agg['agg']
-                as_col = agg.get('as', f"{col}_{agg_func}")
+                output_name = agg.get('as') or agg.get('output_column') or f"{col}_{agg_func}"
+                
+                if col not in df.columns:
+                    raise ValueError(f"Column '{col}' not found in dataframe")
                 
                 if col not in agg_dict:
                     agg_dict[col] = []
                 agg_dict[col].append(agg_func)
+                
+                # Track rename mapping: (col, agg_func) -> output_name
+                rename_map[(col, agg_func)] = output_name
             
+            # Perform aggregation
             df = df.groupby(group_by).agg(agg_dict).reset_index()
+            
+            # Flatten multi-level columns if present
+            if isinstance(df.columns, pd.MultiIndex):
+                new_cols = []
+                for col_tuple in df.columns:
+                    if col_tuple[1]:  # Has aggregation function
+                        # Use custom name if provided, else default
+                        new_name = rename_map.get((col_tuple[0], col_tuple[1]), f"{col_tuple[0]}_{col_tuple[1]}")
+                        new_cols.append(new_name)
+                    else:
+                        new_cols.append(col_tuple[0])
+                df.columns = new_cols
             
             # Flatten column names
             df.columns = ['_'.join(col).strip('_') for col in df.columns.values]
@@ -591,7 +618,9 @@ def execute_load_node(node: Dict[str, Any], input_df: pd.DataFrame,
         message = f"Wrote {rows_in} rows to CSV"
     
     elif subtype == 'EXCEL_LOAD':
-        output_path = config.get('output_path') or f'{default_basename}.xlsx'
+        output_path = config.get('output_path')
+        if not output_path:
+            raise ValueError("EXCEL_LOAD requires 'output_path' to be specified")
         output_path = write_excel(input_df, output_path)
         message = f"Wrote {rows_in} rows to Excel"
     
