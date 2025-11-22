@@ -37,12 +37,12 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   return (
     <ToastContext.Provider value={{ showToast, success, error, warning, info }}>
       {children}
-      <div className="fixed top-0 right-0 z-50 p-4 space-y-2">
+      <div className="fixed top-0 right-0 z-[9999] p-4 space-y-2 pointer-events-none">
         {toasts.map((toast, index) => (
           <div
             key={toast.id}
             style={{ transform: `translateY(${index * 72}px)` }}
-            className="transition-transform duration-300"
+            className="transition-transform duration-300 pointer-events-auto"
           >
             <Toast
               message={toast.message}
